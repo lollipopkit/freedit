@@ -24,8 +24,8 @@ async fn main() -> Result<(), AppError> {
         .init();
 
     // only create snapshot in release mode
-    #[cfg(not(debug_assertions))]
-    create_snapshot(&DB);
+    // #[cfg(not(debug_assertions))]
+    // create_snapshot(&DB);
 
     tokio::spawn(async move {
         loop {
