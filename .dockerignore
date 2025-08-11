@@ -1,0 +1,53 @@
+# Build artifacts
+target/
+Cargo.lock
+
+# Data directories (will be mounted as volumes)
+data/
+
+# Git and version control
+.git/
+.gitignore
+
+# Development files
+.vscode/
+.idea/
+
+# Documentation
+README.md
+LICENSE
+CLAUDE.md
+
+# CI/CD files
+.github/
+
+# Docker files themselves
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*.bak
+
+# Rust specific
+**/*.rs.bk
+
+# Test files that shouldn't be in production
+tests/
+
+# Configuration that might contain secrets
+config.local.toml

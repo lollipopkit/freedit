@@ -22,12 +22,6 @@
 //! | default         | "notifications_count" | N                 |
 //! | "notifications" | `uid#nid#nt_type`     | `id1#id2#is_read` |
 //!
-//! ### captcha
-//!
-//! | tree        | key                | value         |
-//! |-------------|--------------------|---------------|
-//! | "captcha"   | `timestamp_nanoid` | captcha_chars |
-//!
 //! ### solo
 //! | tree               | key           | value            |
 //! |--------------------|---------------|------------------|
@@ -132,6 +126,7 @@ use self::fmt::md2html;
 use self::tantivy::{FIELDS, ToDoc};
 use self::user::Role;
 use crate::error::AppError;
+use crate::CONFIG;
 use ::tantivy::TantivyDocument;
 use bincode::config::standard;
 use bincode::{Decode, Encode};
@@ -513,9 +508,9 @@ pub(super) struct SiteConfig {
     #[validate(range(max = 100))]
     per_page: usize,
     #[validate(skip)]
-    captcha_difficulty: String,
+    turnstile_site_key: String,
     #[validate(skip)]
-    captcha_name: String,
+    turnstile_secret_key: String,
     #[validate(skip)]
     home_page: u8,
     #[validate(skip)]
@@ -529,8 +524,14 @@ impl SiteConfig {
     /// get [SiteConfig]
     fn get(db: &Db) -> Result<SiteConfig, AppError> {
         let site_config = &db.get("site_config")?.unwrap_or_default();
-        let (site_config, _): (SiteConfig, usize) =
+        let (mut site_config, _): (SiteConfig, usize) =
             bincode::decode_from_slice(site_config, standard()).unwrap_or_default();
+        if site_config.turnstile_site_key.is_empty() {
+            site_config.turnstile_site_key = CONFIG.turnstile_site_key.clone();
+        }
+        if site_config.turnstile_secret_key.is_empty() {
+            site_config.turnstile_secret_key = CONFIG.turnstile_secret_key.clone();
+        }
         Ok(site_config)
     }
 }

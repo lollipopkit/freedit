@@ -1,0 +1,22 @@
+services:
+  freedit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: freedit-app
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      # Mount data directory for persistence
+      - ./docker-data:/app/data
+      # Mount config file (optional override)
+      - ./config.toml:/app/config.toml:ro
+    environment:
+      - RUST_LOG=info
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

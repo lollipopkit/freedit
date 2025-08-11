@@ -29,9 +29,6 @@ async fn main() -> Result<(), AppError> {
 
     tokio::spawn(async move {
         loop {
-            if let Err(e) = clear_invalid(&DB, "captcha").await {
-                error!(%e);
-            }
             if let Err(e) = clear_invalid(&DB, "sessions").await {
                 error!(%e);
             }

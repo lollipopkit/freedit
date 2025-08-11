@@ -23,10 +23,6 @@ use axum::{
 };
 use axum_extra::{TypedHeader, headers::Cookie};
 use bincode::config::standard;
-use captcha::{
-    Captcha, CaptchaName, Difficulty, Geometry,
-    filters::{Cow, Noise, Wave},
-};
 use data_encoding::BASE64;
 use identicon::Identicon;
 use jiff::Timestamp;
@@ -35,6 +31,7 @@ use ring::{
     rand::{self, SecureRandom},
 };
 use serde::Deserialize;
+use serde::Deserialize as SerdeDeserialize;
 use sled::Db;
 use std::{cmp::Ordering, fmt::Display, num::NonZeroU32, time::Duration};
 use tokio::time::sleep;
@@ -884,8 +881,37 @@ pub(crate) struct FormSignup {
     password: String,
     #[validate(length(min = 7))]
     password2: String,
-    captcha_id: String,
-    captcha_value: String,
+    #[serde(rename = "cf-turnstile-response")]
+    turnstile_token: String,
+}
+
+/// Turnstile verification response
+#[derive(SerdeDeserialize)]
+struct TurnstileResponse {
+    success: bool,
+    #[serde(rename = "error-codes")]
+    #[allow(dead_code)]
+    error_codes: Option<Vec<String>>,
+}
+
+/// Verify Turnstile token with Cloudflare
+async fn verify_turnstile(token: &str, secret_key: &str) -> Result<bool, AppError> {
+    let client = reqwest::Client::new();
+    let params = [("secret", secret_key), ("response", token)];
+
+    let response = client
+        .post("https://challenges.cloudflare.com/turnstile/v0/siteverify")
+        .form(&params)
+        .send()
+        .await
+        .map_err(|e| AppError::Custom(format!("Turnstile verification failed: {e}")))?;
+
+    let turnstile_response: TurnstileResponse = response
+        .json()
+        .await
+        .map_err(|e| AppError::Custom(format!("Failed to parse Turnstile response: {e}")))?;
+
+    Ok(turnstile_response.success)
 }
 
 /// Page data: `signup.html`
@@ -893,8 +919,7 @@ pub(crate) struct FormSignup {
 #[template(path = "signup.html")]
 struct PageSignup<'a> {
     page_data: PageData<'a>,
-    captcha_id: String,
-    captcha_image: String,
+    turnstile_site_key: &'a str,
     tos_link: &'a str,
 }
 
@@ -906,52 +931,12 @@ pub(crate) async fn signup() -> Result<impl IntoResponse, AppError> {
     }
     let page_data = PageData::new("Sign up", &site_config, None, false);
 
-    let captcha_difficulty = match site_config.captcha_difficulty.as_str() {
-        "Easy" => Difficulty::Easy,
-        "Medium" => Difficulty::Medium,
-        "Hard" => Difficulty::Hard,
-        _ => return Err(AppError::NotFound),
-    };
-
-    let captcha = match site_config.captcha_name.as_str() {
-        "Amelia" => captcha::by_name(captcha_difficulty, CaptchaName::Amelia),
-        "Lucy" => captcha::by_name(captcha_difficulty, CaptchaName::Lucy),
-        "Mila" => captcha::by_name(captcha_difficulty, CaptchaName::Mila),
-        "Digits" => captcha_digits(),
-        _ => return Err(AppError::NotFound),
-    };
-
-    let captcha_id = generate_nanoid_ttl(60);
-    DB.open_tree("captcha")?
-        .insert(&captcha_id, &*captcha.chars_as_string())?;
-
     let page_signup = PageSignup {
         page_data,
-        captcha_id,
-        captcha_image: captcha.as_base64().unwrap(),
+        turnstile_site_key: &site_config.turnstile_site_key,
         tos_link: &site_config.tos_link,
     };
     Ok(into_response(&page_signup))
-}
-
-/// Captcha with digits
-///
-/// From: <https://github.com/daniel-e/captcha/blob/master/examples/captcha.rs>
-fn captcha_digits() -> Captcha {
-    let mut c = Captcha::new();
-    c.set_chars(&['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']);
-    c.add_chars(6)
-        .apply_filter(Noise::new(0.2))
-        .apply_filter(Wave::new(2.0, 20.0))
-        .view(220, 120)
-        .apply_filter(
-            Cow::new()
-                .min_radius(40)
-                .max_radius(50)
-                .circles(1)
-                .area(Geometry::new(40, 150, 50, 70)),
-        );
-    c
 }
 
 /// `POST /signup`
@@ -966,13 +951,15 @@ pub(crate) async fn signup_post(
         return Err(AppError::NameInvalid);
     }
 
-    let captcha_char = DB
-        .open_tree("captcha")?
-        .remove(&input.captcha_id)?
-        .ok_or(AppError::CaptchaError)?;
-    let captcha_char = String::from_utf8(captcha_char.to_vec()).unwrap();
+    // Verify Turnstile token
+    let site_config = SiteConfig::get(&DB)?;
+    if site_config.turnstile_secret_key.is_empty() {
+        return Err(AppError::Custom("Turnstile not configured".to_string()));
+    }
 
-    if captcha_char != input.captcha_value {
+    let is_valid =
+        verify_turnstile(&input.turnstile_token, &site_config.turnstile_secret_key).await?;
+    if !is_valid {
         return Err(AppError::CaptchaError);
     }
 
