@@ -221,7 +221,7 @@ pub(crate) async fn admin_view(
                         "uid: {uid}, nid: {nid}, nt_type: {nt_type}, id1:{id1}, id2:{id2}, is_read:{is_read}"
                     ));
                 }
-                "captcha" | "sessions" => {
+                "sessions" => {
                     let k_str = std::str::from_utf8(&k)?;
                     let time_stamp = k_str
                         .split_once('_')
@@ -355,8 +355,8 @@ pub(crate) async fn admin_post(
     site_config.site_name = clean_html(&site_config.site_name);
     site_config.domain = clean_html(&site_config.domain);
     site_config.description = clean_html(&site_config.description);
-    site_config.captcha_difficulty = clean_html(&site_config.captcha_difficulty);
-    site_config.captcha_name = clean_html(&site_config.captcha_name);
+    site_config.turnstile_site_key = clean_html(&site_config.turnstile_site_key);
+    site_config.turnstile_secret_key = clean_html(&site_config.turnstile_secret_key);
     site_config.tos_link = clean_html(&site_config.tos_link);
 
     set_one_with_key(&DB, "__sled__default", "site_config", &site_config)?;
@@ -378,8 +378,8 @@ impl Default for SiteConfig {
             post_interval: 10,
             comment_interval: 10,
             per_page: 30,
-            captcha_difficulty: "Easy".into(),
-            captcha_name: "Lucy".into(),
+            turnstile_site_key: "".into(),
+            turnstile_secret_key: "".into(),
             home_page: 0,
             spam_regex: None,
             lang: "en".into(),

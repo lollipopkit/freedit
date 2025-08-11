@@ -19,6 +19,8 @@ pub struct Config {
     pub(crate) podcast_path: String,
     pub snapshots_path: String,
     pub(crate) proxy: String,
+    pub(crate) turnstile_site_key: String,
+    pub(crate) turnstile_secret_key: String,
 }
 
 impl Config {
@@ -62,6 +64,8 @@ impl Default for Config {
             tantivy_path: "data/tantivy".into(),
             snapshots_path: "data/snapshots".into(),
             proxy: "".into(),
+            turnstile_site_key: "".into(),
+            turnstile_secret_key: "".into(),
         }
     }
 }
