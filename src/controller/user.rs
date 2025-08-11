@@ -13,7 +13,7 @@ use super::{
     notification::{NtType, add_notification},
     u8_slice_to_u32, u32_to_ivec,
 };
-use crate::{DB, config::CONFIG, error::AppError};
+use crate::{DB, error::AppError};
 use ::rand::{Rng, rng};
 use askama::Template;
 use axum::{
@@ -24,7 +24,6 @@ use axum::{
 use axum_extra::{TypedHeader, headers::Cookie};
 use bincode::config::standard;
 use data_encoding::BASE64;
-use identicon::Identicon;
 use jiff::Timestamp;
 use ring::{
     pbkdf2,
@@ -972,9 +971,6 @@ pub(crate) async fn signup_post(
 
     let password_hash = generate_password_hash(&input.password);
     let uid = incr_id(&DB, "users_count")?;
-
-    let avatar = format!("{}/{}.png", &CONFIG.avatars_path, uid);
-    Identicon::new(&generate_salt()).image().save(avatar)?;
 
     let created_at = Timestamp::now().as_second();
     let role = if uid == 1 {

@@ -125,8 +125,8 @@ use self::db_utils::{
 use self::fmt::md2html;
 use self::tantivy::{FIELDS, ToDoc};
 use self::user::Role;
-use crate::error::AppError;
 use crate::CONFIG;
+use crate::error::AppError;
 use ::tantivy::TantivyDocument;
 use bincode::config::standard;
 use bincode::{Decode, Encode};
