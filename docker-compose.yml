@@ -9,7 +9,7 @@ services:
       - "3001:3001"
     volumes:
       # Mount data directory for persistence
-      - ./docker-data:/app/data
+      - ./data:/app/data
       # Mount config file (optional override)
       - ./config.toml:/app/config.toml:ro
     environment:
