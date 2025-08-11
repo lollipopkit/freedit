@@ -1,5 +1,6 @@
 # Build artifacts
 target/
+!target/release/freedit
 Cargo.lock
 
 # Data directories (will be mounted as volumes)
